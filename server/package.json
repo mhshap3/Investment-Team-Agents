@@ -1,0 +1,25 @@
+{
+  "name": "york-ie-platform-server",
+  "version": "1.0.0",
+  "description": "York IE Platform \u2014 Express API server",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "node-cron": "^3.0.3",
+    "better-sqlite3": "^9.4.3",
+    "express-basic-auth": "^1.2.1",
+    "node-fetch": "^2.7.0",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "@google/generative-ai": "^0.21.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
