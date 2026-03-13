@@ -19,6 +19,7 @@ const syncRoute    = require("./routes/sync");
 const screenRoute  = require("./routes/screen");
 const hubspotRoute = require("./routes/hubspot");
 const dealsRoute   = require("./routes/deals");
+const authRoute    = require("./routes/auth");
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -41,16 +42,6 @@ const aiLimiter = rateLimit({
 });
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
-// Strategy: Basic Auth is applied globally EXCEPT when a valid
-// X-Cron-Secret header is present on /api/sync (internal cron use only).
-//
-// Execution order on POST /api/sync:
-//   1. cronAuthMiddleware — if valid cron secret -> sets req.isCronCall = true -> next()
-//   2. conditionalAuth   — if req.isCronCall -> skip Basic Auth -> next()
-//   3. syncRoute handler
-//
-// All other routes skip step 1 and go directly to conditionalAuth.
-
 function buildBasicAuth() {
   if (!process.env.PLATFORM_USER || !process.env.PLATFORM_PASS) {
     log.warn("auth.disabled", { reason: "PLATFORM_USER/PLATFORM_PASS not set — dev mode" });
@@ -70,12 +61,12 @@ function buildBasicAuth() {
 const basicAuthMiddleware = buildBasicAuth();
 
 function conditionalAuth(req, res, next) {
-  if (req.isCronCall) return next();       // already verified via cron secret
-  if (!basicAuthMiddleware) return next(); // dev mode, no creds configured
+  if (req.isCronCall) return next();
+  if (!basicAuthMiddleware) return next();
   return basicAuthMiddleware(req, res, next);
 }
 
-// ─── Health check — before auth (Railway probe must reach this unauthenticated)
+// ─── Health check — unauthenticated ──────────────────────────────────────────
 app.get("/health", (req, res) => {
   const db = getDb();
   let dbStatus = "ok";
@@ -90,8 +81,8 @@ app.get("/health", (req, res) => {
   }
 
   const configured = {
-    anthropic:  !!process.env.ANTHROPIC_API_KEY, // Gmail MCP fetch
-    gemini:     !!process.env.GEMINI_API_KEY,    // Stage 1 + Stage 3
+    anthropic:  !!process.env.ANTHROPIC_API_KEY,
+    gemini:     !!process.env.GEMINI_API_KEY,
     auth:       !!(process.env.PLATFORM_USER && process.env.PLATFORM_PASS),
     cronSecret: !!process.env.CRON_SECRET,
   };
@@ -106,10 +97,10 @@ app.get("/health", (req, res) => {
   });
 });
 
-// ─── Routes ──────────────────────────────────────────────────────────────────
-// /api/sync gets cronAuthMiddleware first so the internal cron bypass works.
-// All routes then pass through conditionalAuth (which enforces Basic Auth
-// unless the request was already cleared as a cron call).
+// ─── Gmail OAuth routes — unauthenticated (needed for initial setup) ──────────
+app.use("/auth", authRoute);
+
+// ─── API Routes ───────────────────────────────────────────────────────────────
 app.use("/api/sync",    cronAuthMiddleware, conditionalAuth, aiLimiter, syncRoute);
 app.use("/api/screen",  conditionalAuth, aiLimiter, screenRoute);
 app.use("/api/hubspot", conditionalAuth, aiLimiter, hubspotRoute);
@@ -124,10 +115,7 @@ if (process.env.NODE_ENV === "production") {
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 initDb();
-console.log("DEBUG: initDb done");
-console.log("DEBUG: about to listen on port", process.env.PORT || 3001);
 app.listen(PORT, () => {
-  console.log("DEBUG: server is listening!");
   log.info("server.start", {
     port: PORT,
     env:  process.env.NODE_ENV || "development",
