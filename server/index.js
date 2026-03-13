@@ -124,7 +124,10 @@ if (process.env.NODE_ENV === "production") {
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 initDb();
+console.log("DEBUG: initDb done");
+console.log("DEBUG: about to listen on port", process.env.PORT || 3001);
 app.listen(PORT, () => {
+  console.log("DEBUG: server is listening!");
   log.info("server.start", {
     port: PORT,
     env:  process.env.NODE_ENV || "development",
@@ -133,8 +136,6 @@ app.listen(PORT, () => {
 });
 
 // ─── Daily cron — 7:00 AM ET ─────────────────────────────────────────────────
-// Calls syncRoute handler directly in-process rather than over HTTP,
-// so no auth bypass is needed at all for the cron path.
 cron.schedule("0 7 * * *", async () => {
   log.cronTrigger(true);
   try {
