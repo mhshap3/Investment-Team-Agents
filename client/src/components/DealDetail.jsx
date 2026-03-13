@@ -69,6 +69,10 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
     setRescreening(false);
   };
 
+  const website = item.fact_sheet?.website && item.fact_sheet.website !== "unknown"
+    ? item.fact_sheet.website
+    : null;
+
   return (
     <div className="fi">
       <button
@@ -124,6 +128,21 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
               <div style={{ fontSize: "12px", color: YIE.text1, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v || "—"}</div>
             </div>
           ))}
+          {website && (
+            <div>
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: YIE.text3, letterSpacing: "0.12em", marginBottom: "3px" }}>WEBSITE</div>
+              <a
+                href={website.startsWith("http") ? website : `https://${website}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: "12px", color: YIE.teal, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: "none", display: "block" }}
+                onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
+                onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}
+              >
+                {website.replace(/^https?:\/\//, "")}
+              </a>
+            </div>
+          )}
         </div>
 
         <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: `1px solid ${YIE.navy3}`, display: "flex", alignItems: "center", gap: "8px" }}>
