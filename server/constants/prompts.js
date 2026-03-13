@@ -35,6 +35,17 @@ SOURCE TYPE RULES — read carefully:
 - Use "Cold Inbound" if the founder emailed directly, even if they mention a mutual contact or say they were encouraged to reach out by someone.
 - Use "unknown" if the source is genuinely ambiguous.
 
+FOUNDER EMAIL AND WEBSITE — read carefully:
+- founder_email: The founder is the person pitching — NOT the york.ie team member and NOT the introducer.
+  Search the entire email thread for their address: check From, To, CC fields and the email body.
+  For intro emails the founder is usually in the To field or mentioned/quoted in the body.
+  Never set to "unknown" unless you have checked every field and genuinely cannot find any email address for the founder.
+- website: If a website is explicitly stated anywhere in the email or deck, use that.
+  If no website is stated, derive it from the founder's email domain.
+  e.g. founder email is tanya@teamantarisspace.com → website is teamantarisspace.com
+  Do NOT derive a website from generic email providers: gmail.com, yahoo.com, hotmail.com, outlook.com, icloud.com, me.com.
+  If the founder only has a generic email and no website is mentioned, set website to "unknown".
+
 MISSING INFORMATION:
 - If a field is not mentioned, set value to "unknown"
 - If a field is mentioned but ambiguous, set value to "unclear"
