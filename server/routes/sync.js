@@ -1,28 +1,28 @@
-const express = require("express");
-const crypto  = require("crypto");
-const router  = express.Router();
+const express      = require("express");
+const crypto       = require("crypto");
+const router       = express.Router();
+const { google }   = require("googleapis");
 
-const { callAnthropic } = require("../middleware/anthropic"); // Gmail MCP only — stays Claude
-const { getDb }         = require("../db/schema");
-const { runPipeline }   = require("../lib/pipeline");
+const { getDb }           = require("../db/schema");
+const { runPipeline }     = require("../lib/pipeline");
 const { mergeFactSheets } = require("../lib/merge");
-const log               = require("../lib/logger");
+const log                 = require("../lib/logger");
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function getGmailClient() {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI || "https://investment-team-agents-production.up.railway.app/auth/callback"
+  );
+  oauth2Client.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
+  return google.gmail({ version: "v1", auth: oauth2Client });
+}
 
 /**
  * POST /api/sync
  * Fetches pitch emails from Gmail and runs the three-stage screening pipeline.
- * Called manually from the UI (Basic Auth) or by cron (X-Cron-Secret header).
- *
- * Gmail fetch uses Claude/MCP — that is the only remaining Anthropic call.
- * Stage 1 + Stage 3 LLM calls use Gemini via lib/pipeline.js.
- *
- * DUPLICATE HANDLING:
- * - New company → create deal row + submission row + screening history
- * - Duplicate company → attach new submission to existing canonical deal row.
- *   Merge fact sheet fields where incoming has better info. Re-score only if
- *   the fact sheet changed materially.
  */
 router.post("/", async (req, res) => {
   const triggeredBy = req.isCronCall ? "cron" : "manual";
@@ -32,18 +32,8 @@ router.post("/", async (req, res) => {
   log.syncStart(triggeredBy);
 
   try {
-    // ── 1. Fetch emails from Gmail via Claude + MCP ──────────────────────────
-    const afterDate   = formatDateForGmail(new Date(Date.now() - SEVEN_DAYS_MS));
-    const gmailPrompt = buildGmailPrompt(afterDate);
-
-    const gmailResponse = await callAnthropic({
-      model:       "claude-sonnet-4-20250514",
-      max_tokens:  4000,
-      messages:    [{ role: "user", content: gmailPrompt }],
-      mcp_servers: [{ type: "url", url: "https://gmail.mcp.claude.com/mcp", name: "gmail" }],
-    });
-
-    const emails = parseEmailsFromResponse(gmailResponse);
+    // ── 1. Fetch emails from Gmail API ───────────────────────────────────────
+    const emails = await fetchGmailEmails();
     log.info("sync.emails_fetched", { count: emails.length, trigger: triggeredBy });
 
     if (!emails.length) {
@@ -52,8 +42,6 @@ router.post("/", async (req, res) => {
     }
 
     // ── 2. Hard dedup: skip emails already recorded in submissions ───────────
-    // We check submissions.gmail_id (not deals.gmail_id) because duplicate
-    // submissions no longer create a new deal row — they attach to the canonical one.
     const seenGmailIds = new Set(
       db.prepare("SELECT gmail_id FROM submissions").all().map(r => r.gmail_id)
     );
@@ -106,16 +94,13 @@ router.post("/", async (req, res) => {
           : null;
 
         if (isDuplicate && matchedDealId) {
-          // ── DUPLICATE: attach to canonical deal, merge fact sheet ─────────
           handleDuplicateSubmission({
             db, matchedDealId, email, factSheet, analysis,
             introducer, insertHistory, insertSubmission,
           });
-          existingDeals.push({ id: matchedDealId, fact_sheet: factSheet }); // keep dedup sharp
+          existingDeals.push({ id: matchedDealId, fact_sheet: factSheet });
           results.duplicates++;
-
         } else {
-          // ── NEW COMPANY: create canonical deal row ────────────────────────
           const id = crypto.randomUUID();
           db.transaction(() => {
             insertDeal.run({
@@ -179,51 +164,108 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ─── Duplicate submission handler ────────────────────────────────────────────
+// ─── Gmail API fetch ──────────────────────────────────────────────────────────
+
+async function fetchGmailEmails() {
+  const gmail   = getGmailClient();
+  const after   = Math.floor((Date.now() - SEVEN_DAYS_MS) / 1000);
+  const queries = [
+    `to:investmentleads@york.ie after:${after}`,
+    `bcc:investmentleads@york.ie after:${after}`,
+  ];
+
+  const gmailIds = new Set();
+  for (const q of queries) {
+    const res = await gmail.users.messages.list({ userId: "me", q, maxResults: 50 });
+    (res.data.messages || []).forEach(m => gmailIds.add(m.id));
+  }
+
+  const emails = [];
+  for (const id of gmailIds) {
+    try {
+      const msg  = await gmail.users.messages.get({ userId: "me", id, format: "full" });
+      const email = parseGmailMessage(msg.data);
+      if (email) emails.push(email);
+    } catch (err) {
+      log.warn("sync.gmail_fetch_error", { id, error: err.message });
+    }
+  }
+
+  return emails.filter(e =>
+    e.from_email !== "investmentleads@york.ie" &&
+    !e.from_email?.includes("googlegroups.com") &&
+    !e.subject?.toLowerCase().includes("abridged summary") &&
+    !e.subject?.toLowerCase().includes("topic summary") &&
+    !e.subject?.toLowerCase().includes("digest")
+  );
+}
+
+function parseGmailMessage(msg) {
+  const headers  = msg.payload?.headers || [];
+  const get      = (name) => headers.find(h => h.name.toLowerCase() === name.toLowerCase())?.value || "";
+  const from     = get("From");
+  const subject  = get("Subject");
+  const date     = get("Date");
+  const fromMatch = from.match(/^(.*?)\s*<(.+?)>$/) || [];
+  const from_name  = fromMatch[1]?.trim() || from;
+  const from_email = fromMatch[2]?.trim() || from;
+
+  const body = extractBody(msg.payload);
+
+  return {
+    gmail_id:  msg.id,
+    subject,
+    from_name,
+    from_email,
+    date:      new Date(date).toISOString(),
+    snippet:   msg.snippet?.slice(0, 300) || "",
+    full_body: body.slice(0, 3000),
+  };
+}
+
+function extractBody(payload) {
+  if (!payload) return "";
+  if (payload.body?.data) {
+    return Buffer.from(payload.body.data, "base64").toString("utf-8");
+  }
+  if (payload.parts) {
+    for (const part of payload.parts) {
+      if (part.mimeType === "text/plain" && part.body?.data) {
+        return Buffer.from(part.body.data, "base64").toString("utf-8");
+      }
+    }
+    for (const part of payload.parts) {
+      const nested = extractBody(part);
+      if (nested) return nested;
+    }
+  }
+  return "";
+}
+
+// ─── Duplicate submission handler ─────────────────────────────────────────────
 
 function handleDuplicateSubmission({ db, matchedDealId, email, factSheet, analysis, introducer, insertHistory, insertSubmission }) {
   const existing = db.prepare("SELECT fact_sheet, analysis FROM deals WHERE id = ?").get(matchedDealId);
-  if (!existing) return; // shouldn't happen, safety guard
+  if (!existing) return;
 
   const existingFactSheet = JSON.parse(existing.fact_sheet || "{}");
-  const { merged, changed, contradictions } = mergeFactSheets(
-    existingFactSheet, factSheet, factSheet.company_name
-  );
+  const { merged, changed, contradictions } = mergeFactSheets(existingFactSheet, factSheet, factSheet.company_name);
 
   if (contradictions.length > 0) {
     log.info("merge.contradictions", { company: factSheet.company_name, contradictions });
   }
 
-  const lastVersion = db.prepare(
-    "SELECT MAX(version) as v FROM screening_history WHERE deal_id = ?"
-  ).get(matchedDealId);
+  const lastVersion = db.prepare("SELECT MAX(version) as v FROM screening_history WHERE deal_id = ?").get(matchedDealId);
   const nextVersion = (lastVersion?.v || 1) + 1;
 
   db.transaction(() => {
     if (changed) {
-      // Fact sheet improved — re-score only if material fields changed
-      log.info("merge.fact_sheet_changed", { company: factSheet.company_name, dealId: matchedDealId });
-      db.prepare(`
-        UPDATE deals SET fact_sheet = ?, analysis = ?, updated_at = datetime('now') WHERE id = ?
-      `).run(JSON.stringify(merged), JSON.stringify(analysis), matchedDealId);
-
-      insertHistory.run({
-        deal_id: matchedDealId,
-        version: nextVersion,
-        analysis: JSON.stringify(analysis),
-        trigger:  "duplicate_rescore",
-      });
+      db.prepare(`UPDATE deals SET fact_sheet = ?, analysis = ?, updated_at = datetime('now') WHERE id = ?`)
+        .run(JSON.stringify(merged), JSON.stringify(analysis), matchedDealId);
+      insertHistory.run({ deal_id: matchedDealId, version: nextVersion, analysis: JSON.stringify(analysis), trigger: "duplicate_rescore" });
     } else {
-      log.info("merge.fact_sheet_unchanged", { company: factSheet.company_name, dealId: matchedDealId });
-      // Still log the submission event in history
-      insertHistory.run({
-        deal_id: matchedDealId,
-        version: nextVersion,
-        analysis: existing.analysis,
-        trigger:  "duplicate_submission",
-      });
+      insertHistory.run({ deal_id: matchedDealId, version: nextVersion, analysis: existing.analysis, trigger: "duplicate_submission" });
     }
-
     insertSubmission.run({
       deal_id:     matchedDealId,
       gmail_id:    email.gmail_id,
@@ -236,70 +278,10 @@ function handleDuplicateSubmission({ db, matchedDealId, email, factSheet, analys
     });
   })();
 
-  log.info("dedup.submission_attached", {
-    company:  factSheet.company_name,
-    dealId:   matchedDealId,
-    changed,
-  });
+  log.info("dedup.submission_attached", { company: factSheet.company_name, dealId: matchedDealId, changed });
 }
 
-// ─── Gmail helpers ────────────────────────────────────────────────────────────
-
-function formatDateForGmail(date) {
-  return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}`;
-}
-
-function buildGmailPrompt(afterDate) {
-  return `Search Gmail for investment pitch emails sent to investmentleads@york.ie in the last 7 days.
-
-Run TWO search queries and combine results (deduplicate by gmail_id):
-1. to:investmentleads@york.ie after:${afterDate}
-2. bcc:investmentleads@york.ie after:${afterDate}
-
-The second query catches deals where a York IE team member BCC'd the group inbox on an intro reply thread.
-
-CRITICAL FILTERING — skip any email that matches these rules:
-1. from_email is investmentleads@york.ie (automated group digests)
-2. subject contains "Abridged summary", "topic summary", or "digest"
-3. body starts with "Today's topic summary" or contains "You received this digest"
-4. Only process genuine individual pitch emails or intro threads
-
-For forwarded emails (look for "---------- Forwarded message ---------"):
-- Use the ORIGINAL sender as the founder (name + email), not the york.ie forwarder
-
-Return ONLY a JSON array (no markdown):
-[{
-  "gmail_id": "string",
-  "subject": "string",
-  "from_name": "string",
-  "from_email": "string",
-  "date": "ISO date string",
-  "snippet": "string (first 300 chars)",
-  "full_body": "string (full body, max 3000 chars)"
-}]
-
-If no emails found, return [].`;
-}
-
-function parseEmailsFromResponse(response) {
-  const textBlock = response.content?.find(b => b.type === "text");
-  if (!textBlock) return [];
-  const raw   = textBlock.text.replace(/```json|```/g, "").trim();
-  const match = raw.match(/\[[\s\S]*\]/);
-  if (!match) return [];
-  let emails;
-  try { emails = JSON.parse(match[0]); }
-  catch { log.warn("sync.parse_error", { raw: raw.slice(0, 200) }); return []; }
-  if (!Array.isArray(emails)) return [];
-  return emails.filter(e =>
-    e.gmail_id &&
-    e.from_email !== "investmentleads@york.ie" &&
-    !e.from_email?.includes("googlegroups.com") &&
-    !e.subject?.toLowerCase().includes("abridged summary") &&
-    !e.subject?.toLowerCase().includes("topic summary") &&
-    !e.subject?.toLowerCase().includes("digest")
-  );
-}
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function compatFactSheet(analysis) {
   return {
