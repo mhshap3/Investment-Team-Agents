@@ -9,8 +9,8 @@
  */
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const EXTRACTION_MODEL = "gemini-2.0-flash-lite";   // Fast + cheap — structured fact extraction
-const SCORING_MODEL    = "gemini-2.5-pro-exp-03-25"; // Best reasoning — investment scoring
+const EXTRACTION_MODEL = "gemini-2.5-flash-lite";  // fastest, cheapest, stable
+const SCORING_MODEL    = "gemini-2.5-pro";          // most powerful, stable
 
 let _client = null;
 
