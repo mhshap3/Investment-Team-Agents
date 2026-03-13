@@ -20,6 +20,7 @@ const screenRoute  = require("./routes/screen");
 const hubspotRoute = require("./routes/hubspot");
 const dealsRoute   = require("./routes/deals");
 const authRoute    = require("./routes/auth");
+const adminRoute   = require("./routes/admin");
 
 const app  = express();
 app.set("trust proxy", 1);
@@ -100,6 +101,12 @@ app.get("/health", (req, res) => {
 
 // ─── Gmail OAuth routes — unauthenticated (needed for initial setup) ──────────
 app.use("/auth", authRoute);
+
+// ─── Admin debug routes — authenticated ──────────────────────────────────────
+app.use("/admin", conditionalAuth, (req, res, next) => {
+  const db = getDb();
+  adminRoute(db)(req, res, next);
+});
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use("/api/sync",    cronAuthMiddleware, conditionalAuth, aiLimiter, syncRoute);
