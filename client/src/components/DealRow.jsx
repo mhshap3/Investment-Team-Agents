@@ -73,8 +73,11 @@ export default function DealRow({ item, onClick }) {
             {item.analysis.deck_enriched && (
               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", padding: "2px 8px", borderRadius: "3px", background: "#081528", color: YIE.blue, border: "1px solid #1a3d5c" }}>DECK ✓</span>
             )}
-            {source.type === "Intro" && (
+            {/* Always show source badge */}
+            {source.type === "Intro" ? (
               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", padding: "2px 8px", borderRadius: "3px", background: "#160a28", color: "#c084fc", border: "1px solid #5b21b6" }}>INTRO</span>
+            ) : (
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", padding: "2px 8px", borderRadius: "3px", background: YIE.navy2, color: YIE.text3, border: `1px solid ${YIE.navy3}` }}>COLD INBOUND</span>
             )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
