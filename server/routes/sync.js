@@ -172,6 +172,7 @@ async function fetchGmailEmails() {
   const queries = [
     `to:investmentleads@york.ie after:${after}`,
     `bcc:investmentleads@york.ie after:${after}`,
+    `cc:investmentleads@york.ie after:${after}`,
   ];
 
   const gmailIds = new Set();
