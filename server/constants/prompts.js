@@ -30,6 +30,11 @@ FORWARDED / INTRO EMAILS:
 - The introducer is the third party making the connection (e.g. a VC partner, advisor, or mutual contact)
 - Extract the introducer's details separately in the introducer fields
 
+SOURCE TYPE RULES — read carefully:
+- Use "Intro" ONLY if a named third party is explicitly making the connection between the founder and York IE in this email thread.
+- Use "Cold Inbound" if the founder emailed directly, even if they mention a mutual contact or say they were encouraged to reach out by someone.
+- Use "unknown" if the source is genuinely ambiguous.
+
 MISSING INFORMATION:
 - If a field is not mentioned, set value to "unknown"
 - If a field is mentioned but ambiguous, set value to "unclear"
@@ -93,7 +98,10 @@ Apply before all other factors:
 - If round size is unknown, note this in reasoning and add it as a red flag. Do not cap the score.
 
 === REFERRAL BOOST ===
-If source_type is "Intro", add 10 points to both fund scores after all other scoring. Cap each at 100. Note the boost in both reasoning fields as "(+10 intro boost applied)".
+Look at the source_type field in the input fact sheet.
+If source_type is exactly "Intro", add 10 points to both fund scores after all other scoring. Cap each at 100. Note the boost in both reasoning fields as "(+10 intro boost applied)".
+If source_type is "Cold Inbound" or "unknown", do NOT apply any boost regardless of any other context in the fact sheet.
+Do NOT re-derive or re-evaluate the referral type yourself. Trust source_type from the fact sheet exactly as given.
 
 === HARD PASSES (both funds) ===
 Consumer products. Score 0 for both funds. hard_pass = true.
@@ -126,7 +134,7 @@ Respond ONLY with valid JSON — no markdown, no backticks:
   "hard_pass":         false,
   "hard_pass_reason":  null,
   "recommended_action": "Pass | Review Deck | Schedule Call | Fast Track",
-  "referral_type":     "Cold Inbound | Intro",
+  "referral_type":     "Copy source_type from the input fact sheet exactly. Do not change it.",
   "referral_detail":   "null or introducer name + title + company"
 }`;
 
