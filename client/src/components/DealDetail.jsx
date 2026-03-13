@@ -42,9 +42,6 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
   const [pdfBase64, setPdfBase64] = useState(null);
   const [rescreening, setRescreening] = useState(false);
   const [rescreenError, setRescreenError] = useState(null);
-  const [hubspotLoading, setHubspotLoading] = useState(false);
-  const [hubspotResult, setHubspotResult] = useState(item.hubspot_result || null);
-  const [hubspotPushed, setHubspotPushed] = useState(!!item.pushed_to_hubspot);
 
   const handlePdf = (e) => {
     const file = e.target.files?.[0];
@@ -68,18 +65,7 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
     setRescreening(false);
   };
 
-  const handleHubSpot = async () => {
-    setHubspotLoading(true);
-    setHubspotResult(null);
-    try {
-      const { result } = await pushToHubSpot(item.id);
-      setHubspotResult(result);
-      setHubspotPushed(true);
-    } catch (e) {
-      setHubspotResult("Error: " + e.message);
-    }
-    setHubspotLoading(false);
-  };
+
 
   return (
     <div className="fi">
@@ -263,25 +249,7 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
         </button>
       </div>
 
-      {/* HubSpot CRM (existing push) */}
-      <div style={{ background: YIE.navy1, border: `1px solid ${YIE.navy3}`, borderRadius: "8px", padding: "18px 20px", marginBottom: "14px" }}>
-        <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: YIE.text3, letterSpacing: "0.12em", marginBottom: "12px" }}>HUBSPOT CRM</div>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", padding: "9px 13px", background: isSeed ? "#052518" : "#081528", border: "1px solid " + (isSeed ? YIE.teal3 : "#1a3d5c"), borderRadius: "6px" }}>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: YIE.text3, letterSpacing: "0.1em" }}>PIPELINE</span>
-          <span style={{ fontSize: "12px", fontWeight: 600, color: isSeed ? "#4ade80" : "#60a5fa" }}>{pipeline}</span>
-          <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: YIE.text3, marginLeft: "auto" }}>ARR: {deal.arr}</span>
-        </div>
-        {hubspotPushed ? (
-          <div style={{ padding: "10px 14px", background: "#052518", border: `1px solid ${YIE.teal3}`, borderRadius: "6px", fontSize: "11px", color: "#86efac" }}>✓ Already pushed to HubSpot</div>
-        ) : (
-          <button onClick={handleHubSpot} disabled={hubspotLoading} style={{ padding: "11px 24px", background: "#ff7a59", border: "none", borderRadius: "7px", color: "#fff", fontFamily: "'DM Mono', monospace", fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", cursor: hubspotLoading ? "not-allowed" : "pointer", opacity: hubspotLoading ? 0.6 : 1, transition: "all 0.2s" }}>
-            {hubspotLoading ? "⟳  CREATING RECORDS..." : "⬡  PUSH TO HUBSPOT"}
-          </button>
-        )}
-        {hubspotResult && !hubspotPushed && (
-          <div style={{ marginTop: "14px", padding: "12px 14px", background: "#052518", border: `1px solid ${YIE.teal3}`, borderRadius: "6px", fontSize: "11px", color: "#86efac", lineHeight: "1.7" }}>{hubspotResult}</div>
-        )}
-      </div>
+
     </div>
   );
 }
