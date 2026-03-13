@@ -1,10 +1,29 @@
 import { YIE, scoreColor, actionStyle, priorityStyle, topScore, formatDate } from "../constants/brand";
 
+function getDealSource(item) {
+  if (item.fact_sheet) {
+    const fs = typeof item.fact_sheet === "string" ? JSON.parse(item.fact_sheet) : item.fact_sheet;
+    if (fs.source_type === "Intro" || fs.introducer_name) {
+      const parts = [fs.introducer_name, fs.introducer_title, fs.introducer_company].filter(v => v && v !== "unknown");
+      return { type: "Intro", detail: parts.join(", ") || null };
+    }
+  }
+  if (item.analysis?.referral_type === "Intro" || item.analysis?.referral_detail) {
+    return { type: "Intro", detail: item.analysis?.referral_detail || null };
+  }
+  const fromEmail = item.from_email || "";
+  if (fromEmail.endsWith("@york.ie")) {
+    return { type: "Cold Inbound", detail: null };
+  }
+  return { type: "Cold Inbound", detail: null };
+}
+
 export default function DealRow({ item, onClick }) {
   const score = topScore(item.analysis);
   const ps = priorityStyle(score);
   const ab = actionStyle(item.analysis.recommended_action);
   const isSeed = item.analysis.primary_fund !== "Early Growth Fund";
+  const source = getDealSource(item);
 
   return (
     <div
@@ -46,7 +65,7 @@ export default function DealRow({ item, onClick }) {
             {item.analysis.deck_enriched && (
               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", padding: "2px 8px", borderRadius: "3px", background: "#081528", color: YIE.blue, border: "1px solid #1a3d5c" }}>DECK ✓</span>
             )}
-            {item.analysis.referral_type === "Intro" && (
+            {source.type === "Intro" && (
               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", padding: "2px 8px", borderRadius: "3px", background: "#160a28", color: "#c084fc", border: "1px solid #5b21b6" }}>INTRO</span>
             )}
           </div>
@@ -54,8 +73,8 @@ export default function DealRow({ item, onClick }) {
             <div style={{ fontSize: "11px", color: YIE.text3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
               {item.analysis.one_liner}
             </div>
-            {item.analysis.referral_type === "Intro" && item.analysis.referral_detail && (
-              <div style={{ fontSize: "10px", color: "#a78bfa", flexShrink: 0, whiteSpace: "nowrap" }}>via {item.analysis.referral_detail}</div>
+            {source.type === "Intro" && source.detail && (
+              <div style={{ fontSize: "10px", color: "#a78bfa", flexShrink: 0, whiteSpace: "nowrap" }}>via {source.detail}</div>
             )}
           </div>
         </div>
