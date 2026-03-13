@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 const { validateEnv } = require("./lib/validateEnv");
-validateEnv(); // Fail fast before anything else boots
+validateEnv();
 
 const express    = require("express");
 const cors       = require("cors");
@@ -26,24 +26,20 @@ const app  = express();
 app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3001;
 
-// ─── Security headers ────────────────────────────────────────────────────────
 app.use(helmet());
 app.use(express.json({ limit: "10mb" }));
 
-// ─── CORS ────────────────────────────────────────────────────────────────────
 const allowedOrigins = process.env.CLIENT_ORIGIN
   ? [process.env.CLIENT_ORIGIN]
   : ["http://localhost:3000"];
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 
-// ─── Rate limiting — AI routes only ─────────────────────────────────────────
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 30,
   message: { error: "Too many requests, slow down." },
 });
 
-// ─── Auth ────────────────────────────────────────────────────────────────────
 function buildBasicAuth() {
   if (!process.env.PLATFORM_USER || !process.env.PLATFORM_PASS) {
     log.warn("auth.disabled", { reason: "PLATFORM_USER/PLATFORM_PASS not set — dev mode" });
@@ -68,7 +64,6 @@ function conditionalAuth(req, res, next) {
   return basicAuthMiddleware(req, res, next);
 }
 
-// ─── Health check — unauthenticated ──────────────────────────────────────────
 app.get("/health", (req, res) => {
   const db = getDb();
   let dbStatus = "ok";
@@ -99,29 +94,20 @@ app.get("/health", (req, res) => {
   });
 });
 
-// ─── Gmail OAuth routes — unauthenticated (needed for initial setup) ──────────
-app.use("/auth", authRoute);
+app.use("/auth",   authRoute);
+app.use("/admin",  conditionalAuth, adminRoute);
 
-// ─── Admin debug routes — authenticated ──────────────────────────────────────
-app.use("/admin", conditionalAuth, (req, res, next) => {
-  const db = getDb();
-  adminRoute(db)(req, res, next);
-});
-
-// ─── API Routes ───────────────────────────────────────────────────────────────
 app.use("/api/sync",    cronAuthMiddleware, conditionalAuth, aiLimiter, syncRoute);
 app.use("/api/screen",  conditionalAuth, aiLimiter, screenRoute);
 app.use("/api/hubspot", conditionalAuth, aiLimiter, hubspotRoute);
 app.use("/api/deals",   conditionalAuth, dealsRoute);
 
-// ─── Serve built React client in production ───────────────────────────────────
 if (process.env.NODE_ENV === "production") {
   const clientBuild = path.join(__dirname, "../client/build");
   app.use(express.static(clientBuild));
   app.get("*", (req, res) => res.sendFile(path.join(clientBuild, "index.html")));
 }
 
-// ─── Boot ─────────────────────────────────────────────────────────────────────
 initDb();
 app.listen(PORT, () => {
   log.info("server.start", {
@@ -131,7 +117,6 @@ app.listen(PORT, () => {
   });
 });
 
-// ─── Daily cron — 7:00 AM ET ─────────────────────────────────────────────────
 cron.schedule("0 7 * * *", async () => {
   log.cronTrigger(true);
   try {
