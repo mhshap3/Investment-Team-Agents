@@ -4,16 +4,21 @@ function getDealSource(item) {
   if (item.fact_sheet) {
     const fs = typeof item.fact_sheet === "string" ? JSON.parse(item.fact_sheet) : item.fact_sheet;
     if (fs.source_type === "Intro" || fs.introducer_name) {
+      const company = (fs.introducer_company || "").toLowerCase();
+      const email = (fs.introducer_email || "").toLowerCase();
+      if (company.includes("york") || email.includes("york.ie")) {
+        return { type: "Cold Inbound", detail: null };
+      }
       const parts = [fs.introducer_name, fs.introducer_title, fs.introducer_company].filter(v => v && v !== "unknown");
       return { type: "Intro", detail: parts.join(", ") || null };
     }
   }
   if (item.analysis?.referral_type === "Intro" || item.analysis?.referral_detail) {
-    return { type: "Intro", detail: item.analysis?.referral_detail || null };
-  }
-  const fromEmail = item.from_email || "";
-  if (fromEmail.endsWith("@york.ie")) {
-    return { type: "Cold Inbound", detail: null };
+    const detail = item.analysis?.referral_detail || "";
+    if (detail.toLowerCase().includes("york")) {
+      return { type: "Cold Inbound", detail: null };
+    }
+    return { type: "Intro", detail: detail || null };
   }
   return { type: "Cold Inbound", detail: null };
 }
