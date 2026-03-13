@@ -20,6 +20,9 @@ function getDealSource(item) {
     }
     return { type: "Intro", detail: detail || null };
   }
+  if ((item.from_email || "").endsWith("@york.ie")) {
+    return { type: "Cold Inbound", detail: null };
+  }
   return { type: "Cold Inbound", detail: null };
 }
 
