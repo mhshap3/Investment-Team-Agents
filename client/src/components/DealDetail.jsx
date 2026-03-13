@@ -1,30 +1,30 @@
 import { useRef, useState } from "react";
 import ScoreRing from "./ScoreRing";
 import { YIE, labelStyle, actionStyle, getPipelineName, formatDate } from "../constants/brand";
-import { rescreenWithDeck, pushToHubSpot, updateDealStatus } from "../api";
+import { rescreenWithDeck } from "../api";
 
 function getDealSource(item) {
-  // Check submissions for intro info first
   const { analysis: deal } = item;
-  
-  // If the fact sheet has intro info, use it
+
   if (item.fact_sheet) {
     const fs = typeof item.fact_sheet === "string" ? JSON.parse(item.fact_sheet) : item.fact_sheet;
     if (fs.source_type === "Intro" || fs.introducer_name) {
+      const company = (fs.introducer_company || "").toLowerCase();
+      const email = (fs.introducer_email || "").toLowerCase();
+      if (company.includes("york") || email.includes("york.ie")) {
+        return { type: "Cold Inbound", detail: null };
+      }
       const parts = [fs.introducer_name, fs.introducer_title, fs.introducer_company].filter(v => v && v !== "unknown");
       return { type: "Intro", detail: parts.join(", ") || null };
     }
   }
 
-  // Fall back to analysis referral fields
   if (deal.referral_type === "Intro" || deal.referral_detail) {
-    return { type: "Intro", detail: deal.referral_detail || null };
-  }
-
-  // Check if from_email is an internal york.ie address — if so, treat as forwarded cold inbound
-  const fromEmail = item.from_email || "";
-  if (fromEmail.endsWith("@york.ie")) {
-    return { type: "Cold Inbound", detail: null };
+    const detail = deal.referral_detail || "";
+    if (detail.toLowerCase().includes("york")) {
+      return { type: "Cold Inbound", detail: null };
+    }
+    return { type: "Intro", detail: detail || null };
   }
 
   return { type: "Cold Inbound", detail: null };
@@ -64,8 +64,6 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
     }
     setRescreening(false);
   };
-
-
 
   return (
     <div className="fi">
@@ -220,36 +218,13 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
 
       {/* Action buttons */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
-        {/* Send Pass Email — greyed out */}
-        <button
-          disabled
-          title="Coming soon"
-          style={{
-            padding: "13px 20px", background: YIE.navy1, border: `1px solid ${YIE.navy3}`,
-            borderRadius: "7px", color: YIE.text3, fontFamily: "'DM Mono', monospace",
-            fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em",
-            cursor: "not-allowed", opacity: 0.5,
-          }}
-        >
+        <button disabled title="Coming soon" style={{ padding: "13px 20px", background: YIE.navy1, border: `1px solid ${YIE.navy3}`, borderRadius: "7px", color: YIE.text3, fontFamily: "'DM Mono', monospace", fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", cursor: "not-allowed", opacity: 0.5 }}>
           ✉ SEND PASS EMAIL
         </button>
-
-        {/* Push to HubSpot for Further DD — greyed out */}
-        <button
-          disabled
-          title="Coming soon"
-          style={{
-            padding: "13px 20px", background: YIE.navy1, border: `1px solid ${YIE.navy3}`,
-            borderRadius: "7px", color: YIE.text3, fontFamily: "'DM Mono', monospace",
-            fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em",
-            cursor: "not-allowed", opacity: 0.5,
-          }}
-        >
+        <button disabled title="Coming soon" style={{ padding: "13px 20px", background: YIE.navy1, border: `1px solid ${YIE.navy3}`, borderRadius: "7px", color: YIE.text3, fontFamily: "'DM Mono', monospace", fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", cursor: "not-allowed", opacity: 0.5 }}>
           ⬡ PUSH TO HUBSPOT FOR FURTHER DD
         </button>
       </div>
-
-
     </div>
   );
 }
