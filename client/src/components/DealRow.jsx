@@ -3,7 +3,7 @@ import { YIE, scoreColor, actionStyle, priorityStyle, topScore, formatDate } fro
 function getDealSource(item) {
   if (item.fact_sheet) {
     const fs = typeof item.fact_sheet === "string" ? JSON.parse(item.fact_sheet) : item.fact_sheet;
-    if (fs.source_type === "Intro" || fs.introducer_name) {
+    if (fs.source_type === "Intro" || (fs.introducer_name && fs.introducer_name !== "unknown")) {
       const company = (fs.introducer_company || "").toLowerCase();
       const email = (fs.introducer_email || "").toLowerCase();
       if (company.includes("york") || email.includes("york.ie")) {
@@ -45,7 +45,6 @@ export default function DealRow({ item, onClick }) {
       onMouseLeave={e => { e.currentTarget.style.borderColor = YIE.navy3; e.currentTarget.style.background = YIE.navy1; }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-        {/* Priority badge */}
         <div style={{ width: "44px", textAlign: "center", flexShrink: 0 }}>
           <div style={{
             fontFamily: "'DM Mono', monospace", fontSize: "9px", fontWeight: 700,
@@ -55,7 +54,6 @@ export default function DealRow({ item, onClick }) {
           <div style={{ fontSize: "15px", fontWeight: 700, color: scoreColor(score), marginTop: "5px", fontFamily: "'DM Sans', sans-serif" }}>{score}</div>
         </div>
 
-        {/* Company info */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px", flexWrap: "wrap" }}>
             <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", fontWeight: 600, color: YIE.white }}>
@@ -73,7 +71,6 @@ export default function DealRow({ item, onClick }) {
             {item.analysis.deck_enriched && (
               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", padding: "2px 8px", borderRadius: "3px", background: "#081528", color: YIE.blue, border: "1px solid #1a3d5c" }}>DECK ✓</span>
             )}
-            {/* Always show source badge */}
             {source.type === "Intro" ? (
               <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", padding: "2px 8px", borderRadius: "3px", background: "#160a28", color: "#c084fc", border: "1px solid #5b21b6" }}>INTRO</span>
             ) : (
@@ -90,7 +87,6 @@ export default function DealRow({ item, onClick }) {
           </div>
         </div>
 
-        {/* Meta columns */}
         <div style={{ display: "flex", gap: "20px", alignItems: "center", flexShrink: 0 }}>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: YIE.text3, letterSpacing: "0.1em" }}>ANNUAL REV.</div>
