@@ -3,11 +3,39 @@ import ScoreRing from "./ScoreRing";
 import { YIE, labelStyle, actionStyle, getPipelineName, formatDate } from "../constants/brand";
 import { rescreenWithDeck, pushToHubSpot, updateDealStatus } from "../api";
 
+function getDealSource(item) {
+  // Check submissions for intro info first
+  const { analysis: deal } = item;
+  
+  // If the fact sheet has intro info, use it
+  if (item.fact_sheet) {
+    const fs = typeof item.fact_sheet === "string" ? JSON.parse(item.fact_sheet) : item.fact_sheet;
+    if (fs.source_type === "Intro" || fs.introducer_name) {
+      const parts = [fs.introducer_name, fs.introducer_title, fs.introducer_company].filter(v => v && v !== "unknown");
+      return { type: "Intro", detail: parts.join(", ") || null };
+    }
+  }
+
+  // Fall back to analysis referral fields
+  if (deal.referral_type === "Intro" || deal.referral_detail) {
+    return { type: "Intro", detail: deal.referral_detail || null };
+  }
+
+  // Check if from_email is an internal york.ie address — if so, treat as forwarded cold inbound
+  const fromEmail = item.from_email || "";
+  if (fromEmail.endsWith("@york.ie")) {
+    return { type: "Cold Inbound", detail: null };
+  }
+
+  return { type: "Cold Inbound", detail: null };
+}
+
 export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) {
   const { analysis: deal } = item;
   const pipeline = getPipelineName(deal);
   const isSeed = pipeline === "Seed Fund Deals";
   const ab = actionStyle(deal.recommended_action);
+  const source = getDealSource(item);
 
   const fileInputRef = useRef(null);
   const [pdfFile, setPdfFile] = useState(null);
@@ -33,7 +61,7 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
     setRescreenError(null);
     try {
       const { analysis } = await rescreenWithDeck(item.id, pdfBase64);
-      onBack(analysis); // triggers parent refresh
+      onBack(analysis);
     } catch (e) {
       setRescreenError("Re-screen failed: " + e.message);
     }
@@ -51,15 +79,6 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
       setHubspotResult("Error: " + e.message);
     }
     setHubspotLoading(false);
-  };
-
-  const handleMarkReviewed = async () => {
-    try {
-      await updateDealStatus(item.id, "reviewed");
-      onMarkReviewed();
-    } catch (e) {
-      console.error("Failed to mark reviewed:", e.message);
-    }
   };
 
   return (
@@ -124,10 +143,10 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
         {/* Deal source */}
         <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: `1px solid ${YIE.navy3}`, display: "flex", alignItems: "center", gap: "8px" }}>
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: YIE.text3, letterSpacing: "0.12em" }}>DEAL SOURCE</span>
-          {deal.referral_type === "Intro" ? (
+          {source.type === "Intro" ? (
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <span style={{ fontSize: "9px", padding: "2px 8px", borderRadius: "10px", background: "#1a0a2e", color: "#c084fc", border: "1px solid #6b21a8", letterSpacing: "0.05em" }}>INTRO</span>
-              {deal.referral_detail && <span style={{ fontSize: "11px", color: "#a78bfa" }}>via {deal.referral_detail}</span>}
+              {source.detail && <span style={{ fontSize: "11px", color: "#a78bfa" }}>via {source.detail}</span>}
             </div>
           ) : (
             <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", padding: "2px 8px", borderRadius: "10px", background: YIE.navy2, color: YIE.text3, border: `1px solid ${YIE.navy3}`, letterSpacing: "0.06em" }}>COLD INBOUND</span>
@@ -213,7 +232,38 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
         </div>
       )}
 
-      {/* HubSpot */}
+      {/* Action buttons */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
+        {/* Send Pass Email — greyed out */}
+        <button
+          disabled
+          title="Coming soon"
+          style={{
+            padding: "13px 20px", background: YIE.navy1, border: `1px solid ${YIE.navy3}`,
+            borderRadius: "7px", color: YIE.text3, fontFamily: "'DM Mono', monospace",
+            fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em",
+            cursor: "not-allowed", opacity: 0.5,
+          }}
+        >
+          ✉ SEND PASS EMAIL
+        </button>
+
+        {/* Push to HubSpot for Further DD — greyed out */}
+        <button
+          disabled
+          title="Coming soon"
+          style={{
+            padding: "13px 20px", background: YIE.navy1, border: `1px solid ${YIE.navy3}`,
+            borderRadius: "7px", color: YIE.text3, fontFamily: "'DM Mono', monospace",
+            fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em",
+            cursor: "not-allowed", opacity: 0.5,
+          }}
+        >
+          ⬡ PUSH TO HUBSPOT FOR FURTHER DD
+        </button>
+      </div>
+
+      {/* HubSpot CRM (existing push) */}
       <div style={{ background: YIE.navy1, border: `1px solid ${YIE.navy3}`, borderRadius: "8px", padding: "18px 20px", marginBottom: "14px" }}>
         <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: YIE.text3, letterSpacing: "0.12em", marginBottom: "12px" }}>HUBSPOT CRM</div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", padding: "9px 13px", background: isSeed ? "#052518" : "#081528", border: "1px solid " + (isSeed ? YIE.teal3 : "#1a3d5c"), borderRadius: "6px" }}>
@@ -232,18 +282,6 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
           <div style={{ marginTop: "14px", padding: "12px 14px", background: "#052518", border: `1px solid ${YIE.teal3}`, borderRadius: "6px", fontSize: "11px", color: "#86efac", lineHeight: "1.7" }}>{hubspotResult}</div>
         )}
       </div>
-
-      {/* Mark reviewed */}
-      {item.status !== "reviewed" && (
-        <button
-          onClick={handleMarkReviewed}
-          style={{ width: "100%", padding: "12px", background: YIE.navy1, border: `1px solid ${YIE.teal3}`, borderRadius: "7px", color: YIE.teal, fontFamily: "'DM Mono', monospace", fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", cursor: "pointer", transition: "all 0.2s" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "#052518"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = YIE.navy1; }}
-        >
-          ✓ MARK AS REVIEWED
-        </button>
-      )}
     </div>
   );
 }
