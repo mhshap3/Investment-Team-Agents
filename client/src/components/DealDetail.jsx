@@ -8,7 +8,7 @@ function getDealSource(item) {
 
   if (item.fact_sheet) {
     const fs = typeof item.fact_sheet === "string" ? JSON.parse(item.fact_sheet) : item.fact_sheet;
-    if (fs.source_type === "Intro" || fs.introducer_name) {
+    if (fs.source_type === "Intro" || (fs.introducer_name && fs.introducer_name !== "unknown")) {
       const company = (fs.introducer_company || "").toLowerCase();
       const email = (fs.introducer_email || "").toLowerCase();
       if (company.includes("york") || email.includes("york.ie")) {
@@ -78,7 +78,6 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
         <span style={{ color: YIE.teal }}>←</span> BACK TO PIPELINE
       </button>
 
-      {/* Deck enrichment banner */}
       {deal.deck_enriched && deal.deck_insights?.length > 0 && (
         <div style={{ background: "#081528", border: `1px solid #1a3d5c`, borderLeft: `3px solid ${YIE.blue}`, borderRadius: "8px", padding: "14px 18px", marginBottom: "14px" }}>
           <div style={{ fontSize: "10px", color: "#60a5fa", letterSpacing: "0.1em", marginBottom: "10px" }}>📄 DECK INSIGHTS</div>
@@ -90,7 +89,6 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
         </div>
       )}
 
-      {/* Company card */}
       <div style={{ background: YIE.navy1, border: `1px solid ${YIE.navy3}`, borderTop: `3px solid ${isSeed ? YIE.teal : YIE.blue}`, borderRadius: "8px", padding: "20px 24px", marginBottom: "14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px", flexWrap: "wrap" }}>
           <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "22px", fontWeight: 600, color: YIE.white }}>{deal.company_name}</span>
@@ -128,7 +126,6 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
           ))}
         </div>
 
-        {/* Deal source */}
         <div style={{ marginTop: "14px", paddingTop: "14px", borderTop: `1px solid ${YIE.navy3}`, display: "flex", alignItems: "center", gap: "8px" }}>
           <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: YIE.text3, letterSpacing: "0.12em" }}>DEAL SOURCE</span>
           {source.type === "Intro" ? (
@@ -142,7 +139,6 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
         </div>
       </div>
 
-      {/* Dual fund scores */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "16px" }}>
         {[
           { fund: "Seed Fund", score: deal.seed_score, label: deal.seed_label, reasoning: deal.seed_reasoning, color: YIE.teal, activeBorder: YIE.teal3, subtext: "Pre-rev → $1.5M ARR", activeBg: "#052518", tag: "SEED FUND" },
@@ -167,7 +163,6 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
         ))}
       </div>
 
-      {/* Recommended action */}
       <div style={{ background: ab.bg, borderRadius: "8px", padding: "12px 18px", marginBottom: "16px", display: "flex", alignItems: "center", gap: "12px" }}>
         <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: YIE.text3, letterSpacing: "0.12em" }}>RECOMMENDED ACTION</span>
         <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "14px", fontWeight: 600, color: ab.text }}>{deal.recommended_action}</span>
@@ -177,7 +172,6 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
         <div style={{ padding: "12px 16px", background: "#1a0505", border: "1px solid #7f1d1d", borderRadius: "8px", marginBottom: "16px", fontSize: "12px", color: "#fca5a5" }}>⚠ {deal.hard_pass_reason}</div>
       )}
 
-      {/* Flags */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "16px" }}>
         {[
           { label: "✓ GREEN FLAGS", color: YIE.teal, border: YIE.teal3, items: deal.green_flags, textColor: "#86efac" },
@@ -193,7 +187,6 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
         ))}
       </div>
 
-      {/* Enrich with deck */}
       {!deal.deck_enriched && (
         <div style={{ background: YIE.navy1, border: `1px solid ${YIE.navy3}`, borderRadius: "8px", padding: "16px 20px", marginBottom: "14px" }}>
           <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: YIE.text3, letterSpacing: "0.12em", marginBottom: "10px" }}>ENRICH WITH DECK</div>
@@ -220,7 +213,6 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
         </div>
       )}
 
-      {/* Action buttons */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
         <button disabled title="Coming soon" style={{ padding: "13px 20px", background: YIE.navy1, border: `1px solid ${YIE.navy3}`, borderRadius: "7px", color: YIE.text3, fontFamily: "'DM Mono', monospace", fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", cursor: "not-allowed", opacity: 0.5 }}>
           ✉ SEND PASS EMAIL
