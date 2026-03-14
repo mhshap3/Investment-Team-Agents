@@ -14,12 +14,12 @@ const AGENTS = [
         <circle cx="16" cy="16" r="3" fill="#00c896"/>
       </svg>
     ),
-    stats: [{ label: "FUNDS", value: "Seed + Growth" }, { label: "ROUTES TO", value: "HubSpot" }, { label: "STATUS", value: "Live" }],
+    stats: [{ label: "FUNDS", value: "Seed + Growth" }, { label: "STATUS", value: "Live", isLive: true }],
     accentColor: "#00c896",
   },
   {
     id: "portfolio-updates",
-    label: "Portfolio Updates",
+    label: "Portfolio Intelligence",
     tagline: "Company news, milestones & signals",
     description: "Monitors all 91 portfolio companies for fundraising announcements, press coverage, executive changes, and key milestones. Surfaces what needs your attention each week.",
     status: "coming-soon",
@@ -35,7 +35,7 @@ const AGENTS = [
   },
   {
     id: "lp-reporting",
-    label: "LP Report Builder",
+    label: "Reporting Package Builder",
     tagline: "Quarterly investor reporting & memos",
     description: "Generates draft LP updates, cohort performance summaries, and investment memos from portfolio data. Cuts reporting cycle from days to hours.",
     status: "coming-soon",
@@ -70,7 +70,7 @@ const AGENTS = [
   },
   {
     id: "founder-outreach",
-    label: "Founder Outreach",
+    label: "Outbound Sourcing",
     tagline: "Pass emails, follow-ups & meeting notes",
     description: "Drafts personalized pass emails, follow-up messages, and post-meeting notes for founders — written in your voice, grounded in deal context from the Deal Screener.",
     status: "coming-soon",
@@ -92,7 +92,7 @@ const AGENTS = [
     icon: (
       <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
         <circle cx="16" cy="16" r="11" stroke="#3d607d" strokeWidth="1.5" fill="none"/>
-        <ellipse cx="16" cy="16" rx="5" ry="11" stroke="#3d607d" strokeWidth="1" fill="none"/>
+        <ellipse cx="16" cy="16" rx="5" ry="11" stroke="#3d607d" fill="none"/>
         <line x1="5" y1="16" x2="27" y2="16" stroke="#3d607d" strokeWidth="1" strokeLinecap="round"/>
       </svg>
     ),
@@ -120,6 +120,9 @@ export default function Platform({ onLaunchAgent }) {
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         .fade-up{animation:fadeUp 0.5s ease forwards;}
         .fade-up-1{animation-delay:0.05s;opacity:0;} .fade-up-2{animation-delay:0.1s;opacity:0;} .fade-up-3{animation-delay:0.15s;opacity:0;} .fade-up-4{animation-delay:0.2s;opacity:0;} .fade-up-5{animation-delay:0.25s;opacity:0;} .fade-up-6{animation-delay:0.3s;opacity:0;}
+        @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.6;transform:scale(1.3)}}
+        .live-dot{animation:pulse 2s ease-in-out infinite;}
+        .stat-live{background:rgba(0,200,150,0.1) !important;border-color:rgba(0,200,150,0.3) !important;}
       `}</style>
 
       <div className="geo-bg" />
@@ -156,7 +159,7 @@ export default function Platform({ onLaunchAgent }) {
         </div>
 
         <div className="fade-up fade-up-2" style={{ display: "flex", gap: "32px", marginTop: "36px", paddingTop: "32px", borderTop: `1px solid ${YIE.navy3}` }}>
-          {[{ label: "LIVE AGENTS", value: "1" }, { label: "IN DEVELOPMENT", value: "5" }, { label: "FUNDS COVERED", value: "2" }, { label: "CRM", value: "HubSpot" }].map(({ label, value }) => (
+          {[{ label: "LIVE AGENTS", value: "1" }, { label: "IN DEVELOPMENT", value: "5" }, { label: "FUNDS COVERED", value: "2" }].map(({ label, value }) => (
             <div key={label}>
               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "8px", color: YIE.text3, letterSpacing: "0.14em", marginBottom: "4px" }}>{label}</div>
               <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "20px", fontWeight: 600, color: YIE.white }}>{value}</div>
@@ -180,7 +183,7 @@ export default function Platform({ onLaunchAgent }) {
               )}
               {agent.status === "live" && (
                 <div style={{ position: "absolute", top: "16px", right: "16px", display: "flex", alignItems: "center", gap: "5px" }}>
-                  <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: YIE.teal, boxShadow: `0 0 6px ${YIE.teal}` }} />
+                  <div className="live-dot" style={{ width: "5px", height: "5px", borderRadius: "50%", background: YIE.teal, boxShadow: `0 0 6px ${YIE.teal}` }} />
                   <span style={{ fontFamily: "'DM Mono', monospace", fontSize: "8px", color: YIE.teal, letterSpacing: "0.12em" }}>LIVE</span>
                 </div>
               )}
@@ -190,9 +193,18 @@ export default function Platform({ onLaunchAgent }) {
               <div style={{ fontSize: "12px", color: YIE.text2, lineHeight: 1.65, marginBottom: "20px", minHeight: "56px" }}>{agent.description}</div>
               <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
                 {agent.stats.map(s => (
-                  <div key={s.label} style={{ background: YIE.navy2, border: `1px solid ${YIE.navy3}`, borderRadius: "4px", padding: "4px 10px" }}>
+                  <div
+                    key={s.label}
+                    className={s.isLive ? "stat-live" : ""}
+                    style={{ background: YIE.navy2, border: `1px solid ${YIE.navy3}`, borderRadius: "4px", padding: "4px 10px" }}
+                  >
                     <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "8px", color: YIE.text3, letterSpacing: "0.1em" }}>{s.label}</div>
-                    <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", fontWeight: 600, color: YIE.text1, marginTop: "1px" }}>{s.value}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "5px", marginTop: "1px" }}>
+                      {s.isLive && (
+                        <div className="live-dot" style={{ width: "5px", height: "5px", borderRadius: "50%", background: "#00c896", boxShadow: "0 0 5px #00c896", flexShrink: 0 }} />
+                      )}
+                      <div style={{ fontFamily: "'DM Sans', sans-serif", fontSize: "11px", fontWeight: 600, color: s.isLive ? "#00c896" : YIE.text1 }}>{s.value}</div>
+                    </div>
                   </div>
                 ))}
               </div>
