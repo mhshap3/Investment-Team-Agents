@@ -1,4 +1,3 @@
-```jsx
 import { useRef, useState } from "react";
 import ScoreRing from "./ScoreRing";
 import { YIE, labelStyle, actionStyle, getPipelineName, formatDate } from "../constants/brand";
@@ -132,7 +131,7 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
           {website && (
             <div>
               <div style={{ fontFamily: "'DM Mono', monospace", fontSize: "9px", color: YIE.text3, letterSpacing: "0.12em", marginBottom: "3px" }}>WEBSITE</div>
-              
+              <a
                 href={website.startsWith("http") ? website : `https://${website}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -234,14 +233,13 @@ export default function DealDetail({ item, onBack, onMarkReviewed, onRefresh }) 
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "14px" }}>
-        <button disabled title="Coming soon" style={{ padding: "13px 20px", background: "#1a0505", border: "1px solid #991b1b", borderRadius: "7px", color: "#f87171", fontFamily: "'DM Mono', monospace", fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", cursor: "not-allowed", opacity: 0.5 }}>
+        <button disabled title="Coming soon" style={{ padding: "13px 20px", background: YIE.navy1, border: `1px solid ${YIE.navy3}`, borderRadius: "7px", color: YIE.text3, fontFamily: "'DM Mono', monospace", fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", cursor: "not-allowed", opacity: 0.5 }}>
           ✉ SEND PASS EMAIL
         </button>
-        <button disabled title="Coming soon" style={{ padding: "13px 20px", background: "#052518", border: `1px solid ${YIE.teal3}`, borderRadius: "7px", color: YIE.teal, fontFamily: "'DM Mono', monospace", fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", cursor: "not-allowed", opacity: 0.5 }}>
-          📅 SCHEDULE FIRST CALL
+        <button disabled title="Coming soon" style={{ padding: "13px 20px", background: YIE.navy1, border: `1px solid ${YIE.navy3}`, borderRadius: "7px", color: YIE.text3, fontFamily: "'DM Mono', monospace", fontSize: "11px", fontWeight: 600, letterSpacing: "0.08em", cursor: "not-allowed", opacity: 0.5 }}>
+          ⬡ PUSH TO HUBSPOT FOR FURTHER DD
         </button>
       </div>
     </div>
   );
 }
-```
